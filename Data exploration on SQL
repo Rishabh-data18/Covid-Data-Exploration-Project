@@ -130,3 +130,41 @@ WHERE dea.continent IS NOT NULL
 )
 SELECT *, (Rolling_people_vaccinated/population)*100 
 FROM population_vs_vaccination
+
+
+--Retrieving tables for Tableau visualizations by querying on SQL
+
+
+--Looking at the global numbers of Total cases, Total deaths and Death percentage
+
+SELECT SUM(new_cases) AS total_cases, SUM(cast(new_deaths as int)) AS total_deaths, SUM(cast(new_deaths as int))/SUM(New_Cases)*100 AS DeathPercentage
+FROM [portfolio project]..covid_deaths
+WHERE continent is not null 
+ORDER BY 1,2
+
+
+--Looking at the Death counts across continents
+
+SELECT location, SUM(CAST(new_deaths AS int)) AS TotalDeathCount
+FROM [portfolio project]..covid_deaths
+WHERE continent is null AND location NOT IN ('World', 'European Union', 'International', 'Upper middle income', 'High income', 'Lower middle income', 'Low income')
+GROUP BY location
+ORDER BY location
+
+
+--Looking at the percent of population infected across locations (not grouped by dates)
+
+SELECT Location, Population, MAX(total_cases) as HighestInfectionCount,  Max((total_cases/population))*100 as PercentPopulationInfected
+FROM [portfolio project]..covid_deaths
+WHERE location not in ('World', 'European Union', 'International', 'Upper middle income', 'High income', 'Lower middle income', 'Low income')
+GROUP BY Location, Population
+ORDER BY PercentPopulationInfected desc
+
+
+--Looking at the percent of population infected across locations (grouped by dates)
+
+SELECT location, population, date, MAX(total_cases) AS HighestInfectionCount, Max((total_cases/population))*100 AS PercentPopulationInfected
+FROM [portfolio project]..covid_deaths
+WHERE location not in ('World', 'European Union', 'International', 'Upper middle income', 'High income', 'Lower middle income', 'Low income')
+GROUP BY location, population, date
+ORDER BY PercentPopulationInfected desc

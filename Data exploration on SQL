@@ -1,1 +1,132 @@
+/*
+SQL Queries to explore insights out of the data
+*/
 
+
+SELECT *
+FROM [portfolio project]..covid_deaths
+WHERE continent IS NOT NULL
+ORDER BY 3, 4
+
+SELECT *
+FROM [portfolio project]..covid_vaccinations
+ORDER BY 3, 4
+
+
+--Select data that we are going to use
+
+SELECT location, date, total_cases, new_cases, total_deaths, population
+FROM [portfolio project]..covid_deaths
+WHERE continent IS NOT NULL
+ORDER BY 1, 2
+
+
+--Looking at Total cases vs Total deaths
+--Looking at chance of death once got covid (say it as Death percentage)
+
+SELECT location, date, total_cases, total_deaths, (total_deaths/total_cases)*100 AS Death_percentage
+FROM [portfolio project]..covid_deaths
+WHERE continent IS NOT NULL
+ORDER BY 1, 2
+
+
+--Looking at Death percentage (chances of dying if got covid) of India 
+
+SELECT location, date, total_cases, total_deaths, (total_deaths/total_cases)*100 AS Death_percentage
+FROM [portfolio project]..covid_deaths
+WHERE location = 'India' AND continent IS NOT NULL
+ORDER BY 1, 2
+
+
+--Looking at Total cases vs Population 
+--Looking at the infection rate 
+
+SELECT location, date, population, total_cases, (total_cases/population)*100 AS Infection_rate
+FROM [portfolio project]..covid_deaths
+WHERE continent IS NOT NULL
+ORDER BY 1, 2
+
+
+--Looking at the infection rate (percentage of population got covid) of India
+
+SELECT location, date, population, total_cases, (total_cases/population)*100 AS Infection_rate
+FROM [portfolio project]..covid_deaths
+WHERE location = 'India' AND continent IS NOT NULL
+ORDER BY 1, 2
+
+
+--Looking at countries with highest infection rate 
+
+SELECT location, population, MAX(total_cases) AS Highest_infections, MAX((total_cases/population))*100 AS Highest_Infection_rate
+FROM [portfolio project]..covid_deaths
+WHERE continent IS NOT NULL
+GROUP BY location, population
+ORDER BY Highest_Infection_rate DESC 
+
+
+--Showing countires with highest death count 
+
+SELECT location, MAX(CAST(total_deaths AS int)) AS Total_death_count
+FROM [portfolio project]..covid_deaths
+WHERE continent IS NOT NULL
+GROUP BY location
+ORDER BY Total_death_count  DESC 
+
+
+--Showing continents with highest death count 
+
+SELECT continent, MAX(CAST(total_deaths AS int)) AS Total_death_count
+FROM [portfolio project]..covid_deaths
+WHERE continent IS NOT NULL
+GROUP BY continent
+ORDER BY Total_death_count  DESC 
+
+
+--Global numbers 
+--Looking at total cases, total deaths and death percentage across countries till now
+
+SELECT SUM(new_cases) AS Total_cases, SUM(CAST(new_deaths AS int)) AS Total_deaths, SUM(CAST(new_deaths AS int))/SUM(new_cases)*100 AS Death_percentage
+FROM [portfolio project]..covid_deaths
+WHERE continent IS NOT NULL
+ORDER BY 1, 2
+
+
+SELECT *
+FROM [portfolio project]..covid_vaccinations
+
+
+--Joining both tables of covid deaths and covid vaccinations
+
+SELECT *
+FROM [portfolio project]..covid_deaths AS dea
+JOIN [portfolio project]..covid_vaccinations AS vac
+	ON dea.location = vac.location
+	AND dea.date = vac.date
+
+
+--Looking at total population vs vaccinations 
+
+SELECT dea.continent, dea.location, dea.date, dea.population, vac.new_vaccinations, SUM(CAST(vac.new_vaccinations as bigint)) OVER (PARTITION BY dea.location ORDER BY dea.location, dea.date) AS Rolling_people_vaccinated
+FROM [portfolio project]..covid_deaths AS dea
+JOIN [portfolio project]..covid_vaccinations AS vac
+	ON dea.location = vac.location
+	AND dea.date = vac.date
+WHERE dea.continent IS NOT NULL
+ORDER BY 2,3
+
+
+--Using CTE 
+--Looking at how much percent of population is vaccinated rolling over time
+
+WITH population_vs_vaccination (continent, location, date, population, new_vaccinations, Rolling_people_vaccinated)
+AS
+(
+SELECT dea.continent, dea.location, dea.date, dea.population, vac.new_vaccinations, SUM(CAST(vac.new_vaccinations as bigint)) OVER (PARTITION BY dea.location ORDER BY dea.location, dea.date) AS Rolling_people_vaccinated
+FROM [portfolio project]..covid_deaths AS dea
+JOIN [portfolio project]..covid_vaccinations AS vac
+	ON dea.location = vac.location
+	AND dea.date = vac.date
+WHERE dea.continent IS NOT NULL
+)
+SELECT *, (Rolling_people_vaccinated/population)*100 
+FROM population_vs_vaccination
